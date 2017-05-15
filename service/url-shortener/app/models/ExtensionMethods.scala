@@ -8,8 +8,7 @@ package models {
 
     object ExtensionMethods
     {
-
-        implicit class StringAdditions(self: String)
+        implicit class AugmentedString(self: String)
         {
             def toShortUrlId: Long =
             {
@@ -25,7 +24,7 @@ package models {
             private val decoder = Base64.getUrlDecoder
         }
 
-        implicit class UriAdditions(self: Uri)
+        implicit class AugmentedUri(self: Uri)
         {
             def toShortUrlId: Long =
             {

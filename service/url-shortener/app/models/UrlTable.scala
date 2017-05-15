@@ -1,11 +1,13 @@
 package models {
 
     import akka.http.scaladsl.model.Uri
+    import com.redis._
     import models.ExtensionMethods._
     import slick.jdbc.PostgresProfile.api._
     import slick.lifted.{ProvenShape, TableQuery}
 
-    import scala.concurrent.{ExecutionContext, Future}
+    import scala.concurrent.{ExecutionContext, Future, Promise}
+    import scala.util.Success
 
     class UrlTable(tag: Tag) extends Table[(Long, String)](tag, "url")
     {
@@ -32,9 +34,7 @@ package models {
             try {
                 this.lookup(host, shortUrl.toShortUrlId)
             }
-            catch {
-                case error: Exception => Future.failed(error)
-            }
+            catch {case error: Exception => Future.failed(error)}
         }
 
         def lookup(host: String, id: String)(implicit context: ExecutionContext): Future[Option[UrlRecord]] =
@@ -42,24 +42,56 @@ package models {
             try {
                 this.lookup(host, id.toShortUrlId)
             }
-            catch {
-                case error: Exception => Future.failed(error)
-            }
+            catch {case error: Exception => Future.failed(error)}
         }
 
         def lookup(host: String, id: Long)(implicit context: ExecutionContext): Future[Option[UrlRecord]] =
         {
-            for (record: Option[(Long, String)] <- database.run(table.filter(_.id === id).result.headOption)) yield {
-                record.getOrElse(None) match {
-                    case record: Tuple2[_, _] =>
-                        Some(UrlRecord(host, id = record._1.asInstanceOf[Long], value = record._2.asInstanceOf[String]))
-                    case None => None
-                }
+            // Check cache store for longUrl: String value
+
+            val promisedMaybeString = Promise[Option[String]]()
+
+            def get(): Option[String] = cacheStore.withClient { client =>
+                client.get(id)
             }
+
+            def set(value: String): Boolean = cacheStore.withClient { client =>
+                client.set(id, value)
+            }
+
+            for (value: Option[String] <- Future(get())) yield {
+                promisedMaybeString success value
+            }
+
+            // When the cache check completes:
+            // * accept the cached value, if it's present; otherwise
+            // * check the UrlShortener database and, if a value's present, add it to the cache store
+            // Whatever the case, return the promised result: Some(UrlRecord) or None
+
+            val promisedMaybeRecord = Promise[Option[UrlRecord]]()
+
+            promisedMaybeString.future onComplete {
+                case Success(value: Option[String]) if value.isDefined =>
+                    promisedMaybeRecord success Some(UrlRecord(host, id, value.get))
+                case _ =>
+                    for (record: Option[(Long, String)] <- database.run(table.filter(_.id === id).result.headOption))
+                        yield {
+                            val result: Option[UrlRecord] = record match {
+                                case Some((_: Long, value: String)) =>
+                                    Future(() => set(value)); Some(UrlRecord(host, id, value))
+                                case None => None
+                            }
+                            promisedMaybeRecord success result
+                        }
+            }
+
+            promisedMaybeRecord.future
         }
 
+        private lazy val cacheStore: RedisClientPool = UrlCacheStore.forConfig("UrlShortener.cacheStore")
         private lazy val database = Database.forConfig("UrlShortener.database")
         private val table = TableQuery[UrlTable]
+
         private val insertStatement = table returning table.map((record: UrlTable) => Tuple2(record.id, record.value))
     }
 

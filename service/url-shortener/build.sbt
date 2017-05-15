@@ -12,6 +12,7 @@ libraryDependencies ++= Seq(
     "com.typesafe.slick" %% "slick-hikaricp" % "3.2.0",
     "com.zaxxer" % "HikariCP" % "2.6.1",
     "net.codingwell" %% "scala-guice" % "4.1.0",
+    "net.debasishg" %% "redisclient" % "3.4",
     "org.postgresql" % "postgresql" % "9.3-1100-jdbc4",
     "org.slf4j" % "slf4j-nop" % "1.6.4",
 

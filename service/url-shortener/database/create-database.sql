@@ -1,0 +1,10 @@
+
+DROP DATABASE UrlShortener;
+
+CREATE DATABASE UrlShortener WITH ENCODING = 'UTF8';
+
+CREATE TABLE IF NOT EXISTS Url (
+  id BIGSERIAL PRIMARY KEY,
+  value TEXT NOT NULL UNIQUE,
+  creation_time TIMESTAMP DEFAULT current_timestamp
+);

@@ -1,0 +1,13 @@
+.DS_Store
+.classpath
+.history
+.idea
+.idea_modules
+.project
+.settings
+.vscode
+
+logs/
+RUNNING_PID
+sbt-dist/
+target/

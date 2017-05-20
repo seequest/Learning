@@ -5,6 +5,8 @@ scalaVersion := "2.11.11"
 libraryDependencies ++= Seq(
 
     "com.netaporter" %% "scala-uri" % "[0.4,)",
+    "com.typesafe.slick" %% "slick" % "[3.2,)",
+    "com.typesafe.slick" %% "slick-hikaricp" % "[3.2,)",
     "net.codingwell" %% "scala-guice" % "[4.1,)",
     "net.debasishg"  %% "redisclient" % "[3.4,3.5)",
     "org.postgresql" % "postgresql" % "[42.1,)",

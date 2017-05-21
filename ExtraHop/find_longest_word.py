@@ -75,8 +75,19 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
     def find_path(index: int, origin: Tuple[int, int]) -> Optional[Deque[Tuple[int, int]]]:
         """ Perform a recursive search for the tail end of a case-folded word from a position on the current grid 
 
-        We economize on stack space by relying on variables in the closure of this function.
+        We economize on stack space by relying on variables in the closure of this function. It is also worth noting
+        that words, even long words as for example in languages like German aren't that long. Hence, stack space
+        should not be an issue. 
+        
+        Sidebar 
+        -------
+        According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just
+        lost after an EU law change. That word is 65 characters long:: 
+        
+            Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
 
+        Parameters
+        ----------
         :param index: Index into the current case-folded word. 
         :type index: int
         

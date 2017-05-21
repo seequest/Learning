@@ -1,8 +1,12 @@
-""" ExtraHop Programming Problem
+#!/usr/bin/env python36
+
+""" ExtraHop Programming Problem--
 
 Written by David Noble <david@thenobles.us>.
 
-This module was developed and tested under Python 3.6 on macOS Sierra.
+This module was developed and tested under Python 3.6 on macOS Sierra. Please ask for Python 2.7 code or code that
+will run under Python 2.7 or Python 3.6, if you would prefer it. I mention this because I see that your deprecated
+Python SDK is written for Python 2.7.3 or higher, but not Python 3.x.
 
 """
 
@@ -28,13 +32,27 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
         
     3.	Repeat step 2 any number of times.
     
-    Length ties are broken by alphabetic sort order. Hence, for example, if `foo` and `bar` are 
+    This function preserves the contents of the `words` list. Length ties are broken by alphabetic sort order. Hence, 
+    for example, if `foo` and `bar` are 
     
     * in the list of words and
     * the longest words to be found on a graph
     
-    this function will return `bar` as its result.
+    `find_longest_word` will return `'bar'` and a tuple of the coordinates of its letters in the grid as its result.
 
+    Parameters
+    ----------
+
+    :param grid: A grid presumably filled with letters from some alphabet.
+    :type grid: Grid
+    
+    :param words: A list of words that might be produced from letters on the 'grid' using grid moves.
+    :type words: List[str]
+    
+    :return: Longest word that can be produces from letters on the 'grid' using grid moves; or :const:`None`, if no word
+    can be produced from letters on the 'grid'.
+    :rtype: Optional[Tuple[str, Tuple[Tuple[int, int]]]]
+        
     Grid representation
     ===================
     
@@ -82,14 +100,14 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
         recursion along previously traversed paths. It is worth noting that words, even very long words in languages
         like German aren't that long. Stack space should not be an issue and the code is straight forward with this
         recursive implementation.
-        
+
         Sidebar 
         -------
         According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just lost 
         after an EU law change. It is 65 characters long, one more than the number of cells in a grid:: 
         
             Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
-
+                
         Parameters
         ----------
         
@@ -102,7 +120,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
         :return: Sequence of coordinates of the letters of the tail end of the cased-folded word starting at index or
         :const:`None`, if the current case-folded word cannot be found.
         :rtype: Optional[Tuple[Tuple[int, int]]] 
-         
+
         """
         letter: str = case_folded_word[index]
 
@@ -157,7 +175,7 @@ class Grid(object):
         self._grid = []
 
         for row in grid:
-            row = re.sub(r'\s+', '', row).casefold()
+            row = Grid._replace_whitespace('', row).casefold()
             assert len(row) == Grid.size
             self._grid.append(row)
 
@@ -169,8 +187,10 @@ class Grid(object):
         :param position: row, column coordinates of a cell on the current grid
         :type position: Tuple[int, int]
         
-        :return: The letter at 'position' on the current grid.   
-         
+        :return: The letter at 'position' on the current grid.
+        :rtype: str
+        
+        :raises 
         """
         return self._grid[position[0]][position[1]]
 
@@ -188,50 +208,104 @@ class Grid(object):
         """ Generate a grid containing a set of words that can be found using grid movement rules
         
         Use this method to create test grids. An error message is produced for each word that cannot be put on the grid.
-        Randomly generated ASCII characters are used to put into unfilled cells.
+        Randomly generated ASCII characters are used to fill cells not filled by the words or--as explained in the 
+        code--partial words we put on the grid.
 
+        Parameters
+        ----------
+        
         :param words: An iterator over the set of words to be put on to the grid.
         :type words: Iterator[str]
         
-        :return: A grid object containing the words together with random ASCII fill characters.
+        :return: A grid object containing the words or partial words we put on the grid mixed with random ASCII fill
+        characters.
         :rtype: Grid
+
+        Example
+        -------
+        To see this method in action run these statements from a Python 3.6 REPL. A variable number of letters from
+        the German word "Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz" will be placed on the
+        grid::
+        
+          >>> from find_longest_word import Grid, find_longest_word
+          >>> grid = Grid.generate(['foo', 'bar', 'Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz'])
+          only placed 23 out of 65 letters from rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz : 
+          rindfleischetikettierun
+          >>> find_longest_word(grid, ['foo', 'bar', 'rindfleischetikettierun'])
+          ('rindfleischetikettierun', ((2, 2), (4, 1), (5, 3), (7, 2), (6, 4), (5, 2), (4, 0), (6, 1), (4, 2), (5, 4), 
+          (7, 5), (6, 7), (5, 5), (3, 6), (2, 4), (1, 2), (2, 0), (3, 2), (5, 1), (3, 0), (2, 2), (0, 3), (1, 1)))
+          >>> grid.save('grid-4')
+          
+        We're OK with this given our intent: generate test grids. 
+        
+        As indicated in the above REPL session output you will find the results of example this REPL session in 
+        `grid-4'.  
         
         """
         missing_data = chr(0)
         data = [[missing_data] * Grid.size for i in range(0, Grid.size)]
 
         for word in words:
+
+            # Put this word on the grid starting at a random location
+
             origins = [(x, y) for x in range(0, Grid.size) for y in range(0, Grid.size)]
             random.shuffle(origins)
             word = word.casefold()
-            success = False
+
+            def put(letter: str, x: int, y: int) -> bool:
+                if data[x][y] in (missing_data, letter):
+                    data[x][y] = letter
+                    return True
+                return False
+
+            index = 0
 
             for row, column in origins:
-                index = 0
+
+                if put(word[0], row, column):
+                    index = 1
+                    break
+
+            if index == 0:
+                print('could not find a place for any of the letters from', word)
+            else:
+
                 while index < len(word):
+
+                    # Try to put the letter at word[index] on the grid using a sequence of random grid moves
+                    # One might try alternative paths the way function find_longest_word does, but we'll
+                    # scope that out of this exercise and accept two things:
+                    #
+                    # * By selecting the first random letter placement that works and not trying alternatives path ways
+                    #   out chance of failure is high.
+                    # * In the failure case this algorithm will leave partial words on the grid.
+                    #
+                    # We're OK with this given our intent for this method: generate some random grids for testing.
+
                     moves = [move for move in cls._moves]
                     random.shuffle(moves)
+                    put_letter = False
+
                     for x, y in moves:
                         x, y = row + x, column + y
                         if 0 <= x < Grid.size and 0 <= y < Grid.size:
-                            if data[x][y] in (missing_data, word[index]):
-                                data[x][y] = word[index]
+                            if put(word[index], x, y):
                                 row, column = x, y
-                                success = True
+                                put_letter = True
                                 index += 1
                                 break
-                    if not success:
-                        break
-                if success:
-                    break
 
-            if not success:
-                print('could not find a place for', word)
+                    if not put_letter:
+                        break
+
+                if index < len(word):
+                    print('only placed', index,  'out of', len(word), 'letters from', word, ':', word[:index])
 
         for row in data:
             for column in range(0, Grid.size):
                 if row[column] == missing_data:
-                    row[column] = random.choice(ascii_lowercase)  # Cop-out on unicode letters :(
+                    row[column] = random.choice(ascii_lowercase)  # cop-out by not considering a larger alphabet :(
 
         return Grid([' '.join(row) for row in data])
 
@@ -316,6 +390,8 @@ class Grid(object):
         (+2, +1),  # rt 2 up 1
         (+2, -1),  # rt 2 dn 1
     ]
+
+    _replace_whitespace = re.compile('\s+').sub
 
     # endregion
 

@@ -15,21 +15,23 @@ from string import ascii_lowercase
 from typing import Deque, Iterator, List, Optional, MutableSet, Sequence, Tuple
 
 
-def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, List[Tuple[int, int]]]]:
+def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tuple[Tuple[int, int]]]]:
     """ Find the longest word from a list of words that can be produced from an 8 x 8 grid using grid movement rules
 
     Words on the grid are located using this set of rules:
     
     1.	Start at any position in the grid, and use the letter at that position as the first letter in the candidate 
         word.
+        
     2.	Move to a position in the grid that would be a valid move for a knight in a game of chess, and add the letter 
         at that position to the candidate word.
+        
     3.	Repeat step 2 any number of times.
     
     Length ties are broken by alphabetic sort order. Hence, for example, if `foo` and `bar` are 
     
     * in the list of words and
-    * the longest words to be found on the graph
+    * the longest words to be found on a graph
     
     this function will return `bar` as its result.
 
@@ -67,27 +69,29 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
         
     produces this output::
     
-        ('FORTRAN', deque([(3, 4), (5, 3), (3, 2), (2, 0), (3, 2), (1, 3), (0, 5)]))
+        ('FORTRAN', ((3, 4), (5, 3), (3, 2), (2, 0), (3, 2), (1, 3), (0, 5)))
         
     The coordinates written are zero-based, not unit-based as presented in `PythonCodingProblem.docx`. 
     
     """
+
     def find_path(index: int, origin: Tuple[int, int]) -> Optional[Deque[Tuple[int, int]]]:
         """ Perform a recursive search for the tail end of a case-folded word from a position on the current grid 
 
-        We economize on stack space by relying on variables in the closure of this function. It is also worth noting
-        that words, even long words as for example in languages like German aren't that long. Hence, stack space
+        We economize on stack space by relying on variables in the closure of this function. It is worth noting
+        that words, even very long words in languages like German aren't that long. Hence, stack space
         should not be an issue. 
         
         Sidebar 
         -------
-        According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just
-        lost after an EU law change. That word is 65 characters long:: 
+        According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just lost 
+        after an EU law change. This word is 65 characters long, one more than the number of cells in a grid:: 
         
             Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
 
         Parameters
         ----------
+        
         :param index: Index into the current case-folded word. 
         :type index: int
         
@@ -97,7 +101,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
         :return: Sequence of coordinates of the letters of the tail end of the cased-folded word starting at index or
         :const:`None`, if the current case-folded word cannot be found.
         
-        :rtype: Optional[Deque[Tuple[int, int]]] 
+        :rtype: Optional[Tuple[Tuple[int, int]]] 
          
         """
         letter: str = case_folded_word[index]
@@ -120,7 +124,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
 
         return None
 
-    words = sorted(words, key=lambda x: (-len(x), x))  # TODO: Must we sort? Should we sort in-place?
+    words = sorted(words, key=lambda x: (-len(x), x))
 
     for word in words:
 
@@ -133,7 +137,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
             path = find_path(1, position) if end > 0 else deque()
             if path is not None:
                 path.appendleft(position)
-                return word, path
+                return word, tuple(path)
 
     return None
 

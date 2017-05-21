@@ -78,14 +78,15 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     def find_path(index: int, origin: Tuple[int, int]) -> Optional[Deque[Tuple[int, int]]]:
         """ Perform a recursive search for the tail end of a case-folded word from a position on the current grid 
 
-        We economize on stack space by relying on variables in the closure of this function. It is worth noting
-        that words, even very long words in languages like German aren't that long. Hence, stack space
-        should not be an issue. 
+        This local function economizes on stack space by relying on variables in its closure and short-circuiting 
+        recursion along previously traversed paths. It is worth noting that words, even very long words in languages
+        like German aren't that long. Stack space should not be an issue and the code is straight forward with this
+        recursive implementation.
         
         Sidebar 
         -------
         According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just lost 
-        after an EU law change. This word is 65 characters long, one more than the number of cells in a grid:: 
+        after an EU law change. It is 65 characters long, one more than the number of cells in a grid:: 
         
             Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
 
@@ -100,7 +101,6 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
         
         :return: Sequence of coordinates of the letters of the tail end of the cased-folded word starting at index or
         :const:`None`, if the current case-folded word cannot be found.
-        
         :rtype: Optional[Tuple[Tuple[int, int]]] 
          
         """
@@ -124,7 +124,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
 
         return None
 
-    words = sorted(words, key=lambda x: (-len(x), x))
+    words = sorted((word for word in words if word), key=lambda x: (-len(x), x))
 
     for word in words:
 
@@ -280,7 +280,6 @@ class Grid(object):
         :return: An iterator over the coordinates of those cells containing 'letter'
         :rtype: Iterator[Tuple[int, int]]
 
-        
         """
         for row, letters in enumerate(self._grid, 0):
             column = -1

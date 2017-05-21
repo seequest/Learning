@@ -8,6 +8,8 @@ This module was developed and tested under Python 3.6 on macOS Sierra. Please as
 will run under Python 2.7 or Python 3.6, if you would prefer it. I mention this because I see that your deprecated
 Python SDK is written for Python 2.7.3 or higher, but not Python 3.x.
 
+mypy 0.511 clean
+
 """
 
 import io
@@ -16,10 +18,10 @@ import re
 
 from collections import deque
 from string import ascii_lowercase
-from typing import Deque, Iterator, List, Optional, MutableSet, Sequence, Tuple
+from typing import Deque, Dict, Iterator, List, Mapping, Optional, MutableSet, Sequence, Tuple
 
 
-def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tuple[Tuple[int, int]]]]:
+def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tuple[Tuple[int, int],...]]]:
     """ Find the longest word from a list of words that can be produced from an 8 x 8 grid using grid movement rules
 
     Words on the grid are located using this set of rules:
@@ -38,7 +40,8 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     * in the list of words and
     * the longest words to be found on a graph
     
-    `find_longest_word` will return `'bar'` and a tuple of the coordinates of its letters in the grid as its result.
+    :func:`find_longest_word` will return `'bar'` and a tuple of the coordinates of its letters in the grid as its 
+    result.
 
     Parameters
     ----------
@@ -53,12 +56,39 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     can be produced from letters on the 'grid'.
     :rtype: Optional[Tuple[str, Tuple[Tuple[int, int]]]]
         
-    Grid representation
-    ===================
+    Implementation notes
+    ====================
     
-    A grid is represented by the `Grid` class which encapsulates a small number of grid movement/lookup operations and
-    comes with a set of methods that are useful for testing: `Grid.generate`, `Grid.load`, and `Grid.save`. See the
-    `Grid` class for specifics.
+    A grid is represented by the :type:`Grid` class which encapsulates a small number of grid movement/lookup operations
+    and comes with a set of methods useful for testing: `Grid.generate`, `Grid.load`, and `Grid.save`. See the 
+    :type:`Grid` class for specifics.
+    
+    `find_longest_word` non-destructively sorts words by length and alphabetic order. It then iterates over the set of
+    positions from which a word might start as determined by `Grid.occurrences`. The search for a word from a starting 
+    position is conducted by a local recursive function: `find_path`. All potential paths may be considered, but the 
+    search is done depth-first and so the first complete path found will be taken. The order in which paths are 
+    considered is fixed. This is based on the order of `Grid._moves`.
+    
+    One might have considered more advanced/exotic data structures and algorithms. We chose to keep the code and data 
+    structures simple with an assumption that grid operations are not performance critical. We are content, for example,
+    to consider all moves from a grid position sequentially without providing auxiliary lookup capabilities or more 
+    advanced data structures. These might or might not be required based on space or time requirements.
+    
+    An alternative
+    --------------
+    In the realm of more advanced/exotic we might have considered this: For each cell create a map of the coordinates 
+    of all reachable cells: a map of :type:`Map[str, Tuple[int, int]]` keyed by letter. When moving from one letter of
+    a word to another, consider only those cells with the required letter. As in this code, rule out known fruitless 
+    paths; those visited previously and found to be dead ends. 
+    
+    To speed searches over time one might also store words/word stems; pre-populating some and building up others over
+    time. One might for example, create such a map of words/word stems from the output of :meth:`Grid.generate`. Other 
+    words or word paths unknown to the author might likely be discovered over time.
+    
+    Here's a Wikipedia article that **might** be useful, should it be determined that this naive implementation is 
+    insufficient from a time perspective.
+    
+    * [String searching algorithm](https://en.wikipedia.org/wiki/String_searching_algorithm)
 
     Command line
     ============
@@ -89,7 +119,8 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     
         ('FORTRAN', ((3, 4), (5, 3), (3, 2), (2, 0), (3, 2), (1, 3), (0, 5)))
         
-    The coordinates written are zero-based, not unit-based as presented in `PythonCodingProblem.docx`. 
+    The coordinates written are zero-based row, column values, not unit-based column, row values as presented in 
+    `PythonCodingProblem.docx`. 
     
     """
 
@@ -107,7 +138,12 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
         after an EU law change. It is 65 characters long, one more than the number of cells in a grid:: 
         
             Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
-                
+
+        In our experiments the `Grid.generate` function has not yet found a placement for this word in a grid; though
+        there is a non-zero probability that the current implementation could. Alternatively one could update
+        `Grid.generate` to consider all possible starting places and all possible paths from each of them. We leave
+        this as an exercise.
+                       
         Parameters
         ----------
         
@@ -131,7 +167,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
             if letter == grid[position]:
                 if index == end:
                     return deque((position,))
-                path = find_path(index + 1, position)
+                path: Deque[Tuple[int, int]] = find_path(index + 1, position)
                 if path is not None:
                     path.appendleft(position)
                     return path
@@ -146,13 +182,13 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
 
     for word in words:
 
-        case_folded_word = word.casefold()
-        end = len(case_folded_word) - 1
-        first_letter = case_folded_word[0]
+        case_folded_word: str = word.casefold()  # type: ignore
+        end: int = len(case_folded_word) - 1
+        first_letter: str = case_folded_word[0]
         eliminations: List[Optional[MutableSet[Tuple[int, int]]]] = [None] * (len(case_folded_word) - 1)
 
         for position in grid.occurrences(first_letter):
-            path = find_path(1, position) if end > 0 else deque()
+            path: Optional[Deque[Tuple[int, int]]] = find_path(1, position) if end > 0 else deque()
             if path is not None:
                 path.appendleft(position)
                 return word, tuple(path)
@@ -165,17 +201,25 @@ class Grid(object):
     
     Grid entries are case folded when the grid is instantiated to ensure that case-insensitive comparisons can be made 
     with any (?) alphabet.
-     
+    
+    Implementation notes
+    --------------------
+    A grid is a list of strings. A cells on the grid is accessed by its zero-based row, column coordinate; a 
+    :type:`Tuple[int, int]`. We might have represented a grid differently. We chose this representation after
+    considering several options, including these two: :type:`str`, :type:`List[List[str]]`. We settled on this
+    one because it results in a compact data representation that's as easy to use as :type:`List[List[str]]`
+    and--we think likely--about as compact and efficient as a :type:`str`.
+    
     """
     __slots__ = ('_grid',)  # saves space; good practice for objects with no dynamic membership requirements
 
-    def __init__(self, grid: Sequence[str]):
+    def __init__(self, grid: Sequence[str]) -> None:
 
         assert len(grid) == Grid.size
-        self._grid = []
+        self._grid: List[str] = []
 
         for row in grid:
-            row = Grid._replace_whitespace('', row).casefold()
+            row = Grid._replace_whitespace('', row).casefold()  # type: ignore
             assert len(row) == Grid.size
             self._grid.append(row)
 
@@ -194,7 +238,7 @@ class Grid(object):
         """
         return self._grid[position[0]][position[1]]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """ Get a human readable string representation of the current grid
          
         :return: A human readable string representation of the current grid
@@ -204,13 +248,15 @@ class Grid(object):
         return '\n'.join(' '.join(column for column in row) for row in self._grid)
 
     @classmethod
-    def generate(cls, words: Iterator[str]) -> 'Grid':
+    def generate(cls, words: Iterator[str]) -> Tuple['Grid', Mapping[str, Tuple[str, Tuple[Tuple[int, int],...]]]]:
         """ Generate a grid containing a set of words that can be found using grid movement rules
         
         Use this method to create test grids. An error message is produced for each word that cannot be put on the grid.
         Randomly generated ASCII characters are used to fill cells not filled by the words or--as explained in the 
         code--partial words we put on the grid.
 
+        The implementation of this method is rudimentary, but useful for producing test grids and verifying correctness.
+        
         Parameters
         ----------
         
@@ -227,21 +273,19 @@ class Grid(object):
         the German word "Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz" will be placed on the
         grid::
         
-          >>> from find_longest_word import Grid, find_longest_word
-          >>> grid = Grid.generate(['foo', 'bar', 'Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz'])
-          only placed 23 out of 65 letters from rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz : 
-          rindfleischetikettierun
-          >>> find_longest_word(grid, ['foo', 'bar', 'rindfleischetikettierun'])
-          ('rindfleischetikettierun', ((2, 2), (4, 1), (5, 3), (7, 2), (6, 4), (5, 2), (4, 0), (6, 1), (4, 2), (5, 4), 
-          (7, 5), (6, 7), (5, 5), (3, 6), (2, 4), (1, 2), (2, 0), (3, 2), (5, 1), (3, 0), (2, 2), (0, 3), (1, 1)))
-          >>> grid.save('grid-4')
+            from find_longest_word import Grid, find_longest_word
+            grid, paths = Grid.generate([
+                'foo', 'bar', 'Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz'
+            ])
+            find_longest_word(grid, ['foo', 'bar', 'rindfleischetikettierun'])
+            grid.save('grid-4')
           
-        We're OK with this given our intent: generate test grids. 
-        
-        As indicated in the above REPL session output you will find the results of example this REPL session in 
-        `grid-4'.  
+        We're OK with this given our intent: generate some useful test grids. As indicated in the above REPL session 
+        output you will find the results of example this REPL session in `grid-4'. We did not save the paths created
+        for the words.
         
         """
+        paths: Dict[str, Tuple[str, Tuple[Tuple[int, int], ...]]] = {}
         missing_data = chr(0)
         data = [[missing_data] * Grid.size for i in range(0, Grid.size)]
 
@@ -250,8 +294,11 @@ class Grid(object):
             # Put this word on the grid starting at a random location
 
             origins = [(x, y) for x in range(0, Grid.size) for y in range(0, Grid.size)]
+            path: List[Tuple[int, int]] = None
+            row, column = None, None
             random.shuffle(origins)
-            word = word.casefold()
+
+            case_folded_word = word.casefold()  # type: ignore
 
             def put(letter: str, x: int, y: int) -> bool:
                 if data[x][y] in (missing_data, letter):
@@ -262,16 +309,17 @@ class Grid(object):
             index = 0
 
             for row, column in origins:
-
-                if put(word[0], row, column):
+                if put(case_folded_word[0], row, column):
+                    path = [None] * len(case_folded_word)
+                    path[0] = row, column
                     index = 1
                     break
 
             if index == 0:
-                print('could not find a place for any of the letters from', word)
+                print('could not find a place for any of the letters from', case_folded_word)
+                paths[word] = None
             else:
-
-                while index < len(word):
+                while index < len(case_folded_word):
 
                     # Try to put the letter at word[index] on the grid using a sequence of random grid moves
                     # One might try alternative paths the way function find_longest_word does, but we'll
@@ -290,8 +338,8 @@ class Grid(object):
                     for x, y in moves:
                         x, y = row + x, column + y
                         if 0 <= x < Grid.size and 0 <= y < Grid.size:
-                            if put(word[index], x, y):
-                                row, column = x, y
+                            if put(case_folded_word[index], x, y):
+                                path[index] = row, column = x, y
                                 put_letter = True
                                 index += 1
                                 break
@@ -299,15 +347,20 @@ class Grid(object):
                     if not put_letter:
                         break
 
-                if index < len(word):
-                    print('only placed', index,  'out of', len(word), 'letters from', word, ':', word[:index])
+                if index < len(case_folded_word):
+                    print(
+                        'only placed', index,  'out of', len(case_folded_word), 'letters from', case_folded_word,
+                        ':', case_folded_word[:index]
+                    )
 
-        for row in data:
+                paths[word] = case_folded_word[:index], tuple(path[:index])
+
+        for record in data:
             for column in range(0, Grid.size):
-                if row[column] == missing_data:
-                    row[column] = random.choice(ascii_lowercase)  # cop-out by not considering a larger alphabet :(
+                if record[column] == missing_data:
+                    record[column] = random.choice(ascii_lowercase)  # we do not use a larger alphabet like latin-1 :(
 
-        return Grid([' '.join(row) for row in data])
+        return Grid([' '.join(row) for row in data]), paths
 
     @classmethod
     def load(cls, filename: str) -> 'Grid':
@@ -320,8 +373,8 @@ class Grid(object):
         :rtype: Grid
          
         """
-        with io.open(filename) as f:
-            lines = f.readlines()
+        with io.open(filename) as istream:
+            lines: List[str] = istream.readlines()
         return cls(lines)
 
     @classmethod

@@ -26,9 +26,22 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
         at that position to the candidate word.
     3.	Repeat step 2 any number of times.
     
+    Length ties are broken by alphabetic sort order. Hence, for example, if `foo` and `bar` are 
+    
+    * in the list of words and
+    * the longest words to be found on the graph
+    
+    this function will return `bar` as its result.
+
+    Grid representation
+    ===================
+    
     A grid is represented by the `Grid` class which encapsulates a small number of grid movement/lookup operations and
     comes with a set of methods that are useful for testing: `Grid.generate`, `Grid.load`, and `Grid.save`. See the
     `Grid` class for specifics.
+
+    Command line
+    ============
     
     This function may be executed from the command line using this syntax::
     
@@ -96,8 +109,7 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
 
         return None
 
-    words = sorted(words, key=lambda x: len(x), reverse=True)  # TODO: Must we sort? Should we sort in-place?
-    result = None
+    words = sorted(words, key=lambda x: (-len(x), x))  # TODO: Must we sort? Should we sort in-place?
 
     for word in words:
 
@@ -110,10 +122,9 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Lis
             path = find_path(1, position) if end > 0 else deque()
             if path is not None:
                 path.appendleft(position)
-                result = word, path
-                break
+                return word, path
 
-    return result
+    return None
 
 
 class Grid(object):

@@ -238,7 +238,8 @@ class Grid(object):
         :return: The letter at 'position' on the current grid.
         :rtype: str
         
-        :raises 
+        :raises IndexError: If 'position' does not specify a location on the current grid.
+         
         """
         return self._grid[position[0]][position[1]]
 

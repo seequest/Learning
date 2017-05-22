@@ -130,84 +130,21 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     `PythonCodingProblem.docx`. 
     
     """
-
-    def find_path(index: int, origin: Tuple[int, int]) -> Optional[Deque[Tuple[int, int]]]:
-        """ Perform a recursive search for the tail end of a case-folded word from a position on the current grid 
-
-        This local function economizes on stack space by relying on variables in its closure and short-circuiting 
-        recursion along previously traversed paths. It is worth noting that words, even very long words in languages
-        like German aren't that long. Stack space should not be an issue and the code is straight forward with this
-        recursive implementation.
-
-        Sidebar 
-        -------
-        According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just lost 
-        after an EU law change. It is 65 characters long, one more than the number of cells in a grid:: 
-        
-            Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
-
-        In our experiments the `Grid.generate` function has not yet found a placement for this word in a grid; though
-        there is a non-zero probability that the current implementation could. Alternatively one could update
-        `Grid.generate` to consider all possible starting places and all possible paths from each of them. We leave
-        this as an exercise.
-                       
-        Parameters
-        ----------
-        
-        :param index: Index into the current case-folded word. 
-        :type index: int
-        
-        :param origin: Grid coordinates from which to start the search.
-        :type origin: Tuple[int, int]
-        
-        :return: Sequence of coordinates of the letters of the tail end of the cased-folded word starting at index or
-        :const:`None`, if the current case-folded word cannot be found.
-        :rtype: Optional[Tuple[Tuple[int, int]]] 
-
-        """
-        letter: str = case_folded_word[index]
-
-        for position in grid.moves_from(origin):
-            eliminated = eliminations[index - 1]
-            if eliminated and position in eliminated:
-                continue
-            if letter == grid[position]:
-                if index == end:
-                    return deque((position,))
-                path: Deque[Tuple[int, int]] = find_path(index + 1, position)
-                if path is not None:
-                    path.appendleft(position)
-                    return path
-            if eliminated:
-                eliminated.add(position)
-            else:
-                eliminations[index - 1] = {position}
-
-        return None
-
     words = sorted((word for word in words if word), key=lambda x: (-len(x), x))
 
     for word in words:
-
-        case_folded_word: str = word.casefold()  # type: ignore
-        end: int = len(case_folded_word) - 1
-        first_letter: str = case_folded_word[0]
-        eliminations: List[Optional[MutableSet[Tuple[int, int]]]] = [None] * (len(case_folded_word) - 1)
-
-        for position in grid.occurrences(first_letter):
-            path: Optional[Deque[Tuple[int, int]]] = find_path(1, position) if end > 0 else deque()
-            if path is not None:
-                path.appendleft(position)
-                return word, tuple(path)
+        path = grid.find_path(word)
+        if path is not None:
+            return word, path
 
     return None
 
 
 class Grid(object):
-    """ Represents an 8 x 8 grid--presumably--containing letters drawn from one or more alphabets
+    """ Represents an 8 x 8 grid containing letters drawn from an alphabet
     
     Grid entries are case folded when the grid is instantiated to ensure that case-insensitive comparisons can be made 
-    with any (?) alphabet.
+    with any alphabet.
     
     Implementation notes
     --------------------
@@ -215,17 +152,34 @@ class Grid(object):
     coordinate: a `Tuple[int, int]`. All grids are 8 x 8 as indicated by the value of `Grid.size`: `8`.
     
     """
-    __slots__ = ('_grid',)  # saves space; good practice for objects with no dynamic membership requirements
+    __slots__ = ('_grid', '_letters')  # saves space; good practice for objects with no dynamic membership requirements
 
-    def __init__(self, grid: Sequence[str]) -> None:
+    def __init__(self, data: Sequence[str]) -> None:
 
-        assert len(grid) == Grid.size
-        self._grid: List[List[str]] = []
+        assert len(data) == Grid.size
+        grid: List[List[str]] = []
 
-        for record in grid:
+        for record in data:
             record = Grid._replace_whitespace('', record).casefold()  # type: ignore
             assert len(record) == Grid.size
-            self._grid.append([c for c in record])
+            grid.append([c for c in record])
+
+        self._grid = grid
+
+        letters: Dict[str, Dict[Tuple[int, int], Dict[str, Tuple[Tuple[int, int], ...]]]] = {}
+
+        for row, record in enumerate(grid):
+            for column, letter in enumerate(record):
+                origin = row, column
+                vertices = letters.setdefault(letter, {})
+                edges = vertices.setdefault(origin, {})
+                for delta_y, delta_x in Grid._moves:
+                    position = row + delta_y, column + delta_x
+                    if 0 <= position[0] < Grid.size and 0 <= position[1] < Grid.size:
+                        other_letter = self._grid[position[0]][position[1]]
+                        edges[other_letter] = edges.setdefault(other_letter, tuple()) + (position,)
+
+        self._letters = letters
 
     def __getitem__(self, position: Tuple[int, int]) -> str:
         """ Get the letter in a cell on the current grid
@@ -251,6 +205,56 @@ class Grid(object):
         
         """
         return '\n'.join(' '.join(column for column in row) for row in self._grid)
+
+    def find_path(self, word: str) -> Optional[Tuple[Tuple[int, int], ...]]:
+        """ Perform a recursive search for the tail end of a case-folded word from a position on the current grid 
+
+        This local function economizes on stack space by relying on variables in its closure and short-circuiting 
+        recursion along previously traversed paths. It is worth noting that words, even very long words in languages
+        like German aren't that long. Stack space should not be an issue and the code is straight forward with this
+        recursive implementation.
+
+        Sidebar 
+        -------
+        According to the [BBC](http://www.bbc.com/news/world-europe-22762040) the longest German word was just lost 
+        after an EU law change. It is 65 characters long, one more than the number of cells in a grid:: 
+
+            Rindfleischetikettierungsueberwachungsaufgabenuebertragungsgesetz  
+
+        In our experiments the `Grid.generate` function has not yet found a placement for this word in a grid; though
+        there is a non-zero probability that the current implementation could. Alternatively one could update
+        `Grid.generate` to consider all possible starting places and all possible paths from each of them. We leave
+        this as an exercise.
+
+        Parameters
+        ----------
+
+        :param word: The word to find in the current grid 
+        :type word: str
+
+        :return: A tuple containing the coordinates of the letters of 'word' or const:`None`, if 'word' is not found.
+        :rtype: Optional[Tuple[Tuple[int, int], ...]] 
+
+        """
+        assert len(word) > 0
+
+        word = word.casefold()
+
+        try:
+            nodes = self._letters[word[0]]
+        except KeyError:
+            return None
+
+        if len(word) == 1:
+            return next(iter(nodes)),
+
+        for position, neighbors in nodes.items():
+            path = self._find_path(word[1:], neighbors)
+            if path is not None:
+                path.appendleft(position)
+                return tuple(path)
+
+        return None
 
     @classmethod
     def generate(cls, words: Iterator[str]) -> Tuple['Grid', Mapping[str, Tuple[str, Tuple[Tuple[int, int],...]]]]:
@@ -382,46 +386,6 @@ class Grid(object):
             lines: List[str] = istream.readlines()
         return cls(lines)
 
-    @classmethod
-    def moves_from(cls, origin: Tuple[int, int]) -> Iterator[Tuple[int, int]]:
-        """ Enumerate the coordinates of cells that can be reached from a cell on the current grid
-         
-        Use this method to obtain the position of each element that can be legally reached from origin. Off-grid moves
-        are--as one should expect--excluded from the enumeration.
-        
-        :param origin: A position on the current grid specified as a row, column coordinate
-        :type origin: Tuple[int, int]
-
-        :return: An iterator over the coordinates of cells that can be reached from 'origin'.
-        :rtype: Iterator[Tuple[int, int]]
-                
-        """
-        row, column = origin
-
-        for move in cls._moves:
-            x, y = row + move[0], column + move[1]
-            if 0 <= x < cls.size and 0 <= y < cls.size:
-                yield x, y
-
-    def occurrences(self, letter: str) -> Iterator[Tuple[int, int]]:
-        """ Enumerate the coordinates of each occurrence of a letter on the current grid
-        
-        :param letter: A letter which might or might not be on the grid.
-        :type letter: str
-         
-        :return: An iterator over the coordinates of those cells containing 'letter'
-        :rtype: Iterator[Tuple[int, int]]
-
-        """
-        for row, record in enumerate(self._grid, 0):
-            column = -1
-            while True:
-                try:
-                    column = record.index(letter, column + 1)
-                except ValueError:
-                    break
-                yield row, column
-
     def save(self, filename: str) -> None:
         """ Save the current grid to a file 
         
@@ -450,6 +414,29 @@ class Grid(object):
     ]
 
     _replace_whitespace = re.compile('\s+').sub
+
+    def _find_path(
+            self, stem: str, neighbors: Dict[str, Tuple[Tuple[int, int], ...]]
+    ) -> Optional[Deque[Tuple[int, int]]]:
+
+        try:
+            positions = neighbors[stem[0]]
+        except KeyError:
+            return None
+
+        if len(stem) == 1:
+            return deque((positions[0],))
+
+        nodes = self._letters[stem[0]]
+        stem = stem[1:]
+
+        for position in positions:
+            path = self._find_path(stem, nodes[position])
+            if path is not None:
+                path.appendleft(position)
+                return path
+
+        return None
 
     # endregion
 

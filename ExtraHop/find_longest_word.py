@@ -204,7 +204,7 @@ class Grid(object):
         :rtype: str
         
         """
-        return '\n'.join(' '.join(column for column in row) for row in self._grid)
+        return '\n'.join(' '.join(field for field in record) for record in self._grid)
 
     def find_path(self, word: str) -> Optional[Tuple[Tuple[int, int], ...]]:
         """ Perform a recursive search for the tail end of a case-folded word from a position on the current grid 
@@ -243,18 +243,11 @@ class Grid(object):
         try:
             nodes = self._letters[word[0]]
         except KeyError:
-            return None
+            path = None
+        else:
+            path = self._find_path(word, iter(nodes.keys()))
 
-        if len(word) == 1:
-            return next(iter(nodes)),
-
-        for position, neighbors in nodes.items():
-            path = self._find_path(word[1:], neighbors)
-            if path is not None:
-                path.appendleft(position)
-                return tuple(path)
-
-        return None
+        return path
 
     @classmethod
     def generate(cls, words: Iterator[str]) -> Tuple['Grid', Mapping[str, Tuple[str, Tuple[Tuple[int, int],...]]]]:
@@ -415,26 +408,41 @@ class Grid(object):
 
     _replace_whitespace = re.compile('\s+').sub
 
-    def _find_path(
-            self, stem: str, neighbors: Dict[str, Tuple[Tuple[int, int], ...]]
-    ) -> Optional[Deque[Tuple[int, int]]]:
+    def _find_path(self, word: str, candidates: Iterator[Tuple[int, int]]) -> Optional[Tuple[Tuple[int, int], ...]]:
 
-        try:
-            positions = neighbors[stem[0]]
-        except KeyError:
-            return None
+        stack = [(word, next(candidates), candidates)]
 
-        if len(stem) == 1:
-            return deque((positions[0],))
+        while len(stack) > 0:
 
-        nodes = self._letters[stem[0]]
-        stem = stem[1:]
+            stem, candidate, candidates = stack.pop()
 
-        for position in positions:
-            path = self._find_path(stem, nodes[position])
-            if path is not None:
-                path.appendleft(position)
-                return path
+            if len(stem) == 1:
+                stack.append((stem, candidate, candidates))
+                return tuple(candidate for stem, candidate, candidates in stack)
+
+            # Collect the data we need to move on to the next letter
+
+            nodes = self._letters[stem[0]]  # represents all occurrences of the current letter on the current grid
+            neighbors = nodes[candidate]  # represents all nodes reachable from the current candidate
+            next_letter = stem[1]
+
+            try:
+                new_candidates = iter(neighbors[next_letter])
+            except KeyError:
+                # There's no path to the next letter and so we back up until we've got another viable path to search
+                while True:
+                    try:
+                        candidate = next(candidates)
+                    except StopIteration:
+                        if len(stack) == 0:  # there's no where else to look
+                            break
+                        stem, candidate, candidates = stack.pop()
+                    else:
+                        stack.append((stem, candidate, candidates))
+                        break
+            else:
+                stack.append((stem, candidate, candidates))
+                stack.append((stem[1:], next(new_candidates), new_candidates))
 
         return None
 

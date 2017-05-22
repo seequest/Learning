@@ -211,11 +211,8 @@ class Grid(object):
     
     Implementation notes
     --------------------
-    A grid is a list of strings. A cells on the grid is accessed by its zero-based row, column coordinate; a 
-    :type:`Tuple[int, int]`. We might have represented a grid differently. We chose this representation after
-    considering several options, including these two: :type:`str`, :type:`List[List[str]]`. We settled on this
-    one because it results in a compact data representation that's as easy to use as :type:`List[List[str]]`
-    and--we think likely--about as compact and efficient as a :type:`str`.
+    A grid is internally represented as a List[List[str]]. A cell on the grid is accessed by its zero-based row, column
+    coordinate: a `Tuple[int, int]`. All grids are 8 x 8 as indicated by the value of `Grid.size`: `8`.
     
     """
     __slots__ = ('_grid',)  # saves space; good practice for objects with no dynamic membership requirements
@@ -223,12 +220,12 @@ class Grid(object):
     def __init__(self, grid: Sequence[str]) -> None:
 
         assert len(grid) == Grid.size
-        self._grid: List[str] = []
+        self._grid: List[List[str]] = []
 
-        for row in grid:
-            row = Grid._replace_whitespace('', row).casefold()  # type: ignore
-            assert len(row) == Grid.size
-            self._grid.append(row)
+        for record in grid:
+            record = Grid._replace_whitespace('', record).casefold()  # type: ignore
+            assert len(record) == Grid.size
+            self._grid.append([c for c in record])
 
     def __getitem__(self, position: Tuple[int, int]) -> str:
         """ Get the letter in a cell on the current grid
@@ -415,11 +412,12 @@ class Grid(object):
         :rtype: Iterator[Tuple[int, int]]
 
         """
-        for row, letters in enumerate(self._grid, 0):
+        for row, record in enumerate(self._grid, 0):
             column = -1
             while True:
-                column = letters.find(letter, column + 1)
-                if column < 0:
+                try:
+                    column = record.index(letter, column + 1)
+                except ValueError:
                     break
                 yield row, column
 
@@ -433,8 +431,7 @@ class Grid(object):
         
         """
         with io.open(filename, 'w') as ostream:
-            for row in self._grid:
-                print(*(letter for letter in row), file=ostream, sep=' ')
+            ostream.write(str(self))
 
     size = 8
 

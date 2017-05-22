@@ -21,7 +21,7 @@ from string import ascii_lowercase
 from typing import Deque, Dict, Iterator, List, Mapping, Optional, MutableSet, Sequence, Tuple
 
 
-def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tuple[Tuple[int, int],...]]]:
+def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tuple[Tuple[int, int], ...]]]:
     """ Find the longest word from a list of words that can be produced from an 8 x 8 grid using grid movement rules
 
     Words on the grid are located using this set of rules:
@@ -58,11 +58,18 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
         
     Implementation notes
     ====================
+
+    A grid should be thought of as a directed graph. The cells of a grid are its vertices. The movements that are 
+    permitted from a cell on the graph are edges. The vertices are labeled by row, column coordinates and contain a 
+    single piece of data: a letter drawn from some alphabet. Producing a word from the letters contained by the cells 
+    on a grid amount to a graph traversal in the search for a path that traces out the word.
     
-    A grid is represented by the :type:`Grid` class which encapsulates a small number of grid movement/lookup operations
-    and comes with a set of methods useful for testing: `Grid.generate`, `Grid.load`, and `Grid.save`. See the 
-    :type:`Grid` class for specifics.
+    In this solution we represent a grid with `Grid` class which encapsulates the small number of movement and lookup 
+    operations that are required to trace out such a path. The `Grid` class also comes with a set of methods useful for
+    testing: `Grid.generate`, `Grid.load`, and `Grid.save`. See the `Grid` class for specifics.
     
+    Algorithm
+    ---------
     `find_longest_word` non-destructively sorts words by length and alphabetic order. It then iterates over the set of
     positions from which a word might start as determined by `Grid.occurrences`. The search for a word from a starting 
     position is conducted by a local recursive function: `find_path`. All potential paths may be considered, but the 
@@ -70,20 +77,20 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     considered is fixed. This is based on the order of `Grid._moves`.
     
     One might have considered more advanced/exotic data structures and algorithms. We chose to keep the code and data 
-    structures simple with an assumption that grid operations are not performance critical. We are content, for example,
-    to consider all moves from a grid position sequentially without providing auxiliary lookup capabilities or more 
-    advanced data structures. These might or might not be required based on space or time requirements.
+    structures simple with an assumption that grid (graph) traversal operations are not performance critical. We are 
+    content, for example, to consider all moves from a grid position sequentially without providing auxiliary lookup 
+    capabilities or more advanced data structures. These might or might not be required based on space or time 
+    requirements.
     
     An alternative
     --------------
-    In the realm of more advanced/exotic we might have considered this: For each cell create a map of the coordinates 
-    of all reachable cells: a map of :type:`Map[str, Tuple[int, int]]` keyed by letter. When moving from one letter of
-    a word to another, consider only those cells with the required letter. As in this code, rule out known fruitless 
-    paths; those visited previously and found to be dead ends. 
+    For each cell create a map of the coordinates of all reachable cells: a map of `Map[str, Tuple[int, int]]` keyed by
+    letter. When moving from one letter of a word to another, consider only those cells with the required letter. As in
+    this code, rule out known fruitless paths; those visited previously and found to be dead ends. 
     
-    To speed searches over time one might also store words/word stems; pre-populating some and building up others over
-    time. One might for example, create such a map of words/word stems from the output of :meth:`Grid.generate`. Other 
-    words or word paths unknown to the author might likely be discovered over time.
+    To speed searches over time one might also store (memoize) words/word stems; pre-populating some and building up 
+    others over time. One might for example, create such a map of words/word stems from the output of `Grid.generate`. 
+    Other words or word paths unknown to the author might likely be discovered over time.
     
     Here's a Wikipedia article that **might** be useful, should it be determined that this naive implementation is 
     insufficient from a time perspective.

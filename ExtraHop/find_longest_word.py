@@ -59,43 +59,94 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     Implementation notes
     ====================
 
-    A grid should be thought of as a directed graph. The cells of a grid are its vertices. The movements that are 
-    permitted from a cell on the graph are edges. The vertices are labeled by row, column coordinates and contain a 
-    single piece of data: a letter drawn from some alphabet. Producing a word from the letters contained by the cells 
-    on a grid amount to a graph traversal in the search for a path that traces out the word.
+    A grid should be thought of as a directed graph. The cells of a grid are its vertices. The movements permitted from 
+    a cell on the graph are edges. The vertices are labeled by row, column coordinates and contain a single piece of 
+    data: a letter drawn from some alphabet. Producing a word from the letters on a grid amounts to a graph traversal 
+    in the search for a path that traces out the word.
     
-    In this solution we represent a grid with `Grid` class which encapsulates the small number of movement and lookup 
-    operations that are required to trace out such a path. The `Grid` class also comes with a set of methods useful for
-    testing: `Grid.generate`, `Grid.load`, and `Grid.save`. See the `Grid` class for specifics.
+    In this solution we represent a grid with the `Grid` class which encapsulates two operations for tracing a word 
+    path and following it: 
+    
+        ==================  ==========================================================================================
+        Method              Description
+        ==================  ==========================================================================================
+        `Grid.find_path`    Searches a grid for a path to a word. A word path is represented as a tuple of row, column
+                            coordinates. Coordinates are zero-based.
+        `Grid.__getitem__`  Called to evaluate grid[coordinate].
+        
+    After finding a path you can iterate through it like this:
+    
+        for row, column in path:
+            print(grid[(row, column)]
+        
+    The `Grid` class also comes with a set of methods useful for testing: 
+        ==================  ==========================================================================================
+        Method              Description
+        ==================  ==========================================================================================
+        `Grid.generate`     Creates a grid containing a set of words. Cells left unfilled by letters from the words
+                            are filled with random ASCII characters. 
+        `Grid.load`         Loads a grid from a file.
+        `Grid.save`         Saves a grid to a file.
+        
+    See the `Grid` class for additional documentation
     
     Algorithm
     ---------
-    `find_longest_word` non-destructively sorts words by length and alphabetic order. It then iterates over the set of
-    positions from which a word might start as determined by `Grid.occurrences`. The search for a word from a starting 
-    position is conducted by a local recursive function: `find_path`. All potential paths may be considered, but the 
-    search is done depth-first and so the first complete path found will be taken. The order in which paths are 
-    considered is fixed. This is based on the order of `Grid._moves`.
+
+    `find_longest_word` non-destructively sorts words by length and alphabetic order. It then calls `Grid.find_path`
+    for each word until a path is found. It then returns the word as well as the path to the word. If no word path
+    is found a value of None is returned. `Grid.find_path` case-folds words to ensure all string comparisons are case
+    insensitive.
     
-    One might have considered more advanced/exotic data structures and algorithms. We chose to keep the code and data 
-    structures simple with an assumption that grid (graph) traversal operations are not performance critical. We are 
-    content, for example, to consider all moves from a grid position sequentially without providing auxiliary lookup 
-    capabilities or more advanced data structures. These might or might not be required based on space or time 
-    requirements.
+    Grid representation
+    ~~~~~~~~~~~~~~~~~~~
+
+    For each cell on a grid we create a map of the coordinates of all reachable cells. We partition these coordinates
+    by the letter contained by the cell that it addresses. Thus, for example, all cells that contain the letter 'a' are
+    grouped together. This enables the Grid class to quickly determine the viability of a path based on a letter value.
+      
+    Structurally each cell looks like this::
     
-    An alternative
-    --------------
-    For each cell create a map of the coordinates of all reachable cells: a map of `Map[str, Tuple[int, int]]` keyed by
-    letter. When moving from one letter of a word to another, consider only those cells with the required letter. As in
-    this code, rule out known fruitless paths; those visited previously and found to be dead ends. 
+        coordinate: Tuple[int, int],
+            reachable_letters: Map[str, Tuple[Tuple[int, int], ...]
+            
+    Thus, for example, cell (0, 0) might look like this::
     
-    To speed searches over time one might also store (memoize) words/word stems; pre-populating some and building up 
-    others over time. One might for example, create such a map of words/word stems from the output of `Grid.generate`. 
-    Other words or word paths unknown to the author might likely be discovered over time.
+        (0, 0): {
+            'h': ((1, 2),), 'r': ((2, 1),)
+        }
+
+    At a higher level cells are organized by letter in a dict--see the `Grid._letters` attribute. Thus, for example, 
+    if cell (0, 0) contained the letter 'h' it would be stored in `Grid._letters` like this::
+
+        'h': {    
+            (0, 0): {
+                'h': ((1, 2),), 'r': ((2, 1),)
+            },
+            ...
+        }
     
-    Here's a Wikipedia article that **might** be useful, should it be determined that this naive implementation is 
-    insufficient from a time perspective.
+    All cells containing the letter 'h' are stored under the 'h' key in `Grid._letters`. All letters contained in a
+    grid are represented in `Grid._letters`. This enables quick access to the starting points for a word path search.
+    The `Grid.find_path` method needs only to query for it's first letter and iterate over items in the coordinate
+    map until a path is found or the coordinates in the map are exhausted.
     
-    * [String searching algorithm](https://en.wikipedia.org/wiki/String_searching_algorithm)
+    The `Grid` class also stores a compact form of the grid: An 8 x 8 list of lists. It is the basis of the 
+    `Grid.__getitem__` implementation. 
+
+    **Undone**
+    
+    * Elimination of previously-visited nodes known to be fruitless. During grid traversal it's possible that a cell
+      will be visited more than once for the same letter. If it's visited more than once for the same letter, it clear
+      that the path is fruitless. This is because the search would have succeeded on the first visit. 
+       
+      This might prove to be a useful optimization and would be easy to add. 
+      
+    * To speed searches one might consider memoization of words/word stems; pre-populating some and building up others 
+      over time. One might for example, create such a map of words/word stems from the output of `Grid.generate`. Other
+      words or word paths unknown to the author might likely be discovered over time. 
+      
+      Performance requirements would need to be established before considering implementing this.
 
     Command line
     ============
@@ -146,10 +197,19 @@ class Grid(object):
     Grid entries are case folded when the grid is instantiated to ensure that case-insensitive comparisons can be made 
     with any alphabet.
     
+    **WARNING**
+    
+    In some languages case-folding produces more than one character from a single letter.
+       
+    Example: The German letter 'ß' case folds to 'ss'.
+    
+    This fact must be taken into account when creating grids. You would not want to include the 'ß' character in a
+    grid created by this code without taking care to ensure that the 8 x 8 grid constraint is met following case 
+    folding. 
+    
     Implementation notes
     --------------------
-    A grid is internally represented as a List[List[str]]. A cell on the grid is accessed by its zero-based row, column
-    coordinate: a `Tuple[int, int]`. All grids are 8 x 8 as indicated by the value of `Grid.size`: `8`.
+    See the implementation notes for the `find_longest_word` function.
     
     """
     __slots__ = ('_grid', '_letters')  # saves space; good practice for objects with no dynamic membership requirements
@@ -159,10 +219,10 @@ class Grid(object):
         assert len(data) == Grid.size
         grid: List[List[str]] = []
 
-        for record in data:
-            record = Grid._replace_whitespace('', record).casefold()  # type: ignore
-            assert len(record) == Grid.size
-            grid.append([c for c in record])
+        for line in data:
+            line = Grid._replace_whitespace('', line).casefold()  # type: ignore
+            assert len(line) == Grid.size
+            grid.append([letter for letter in line])
 
         self._grid = grid
 
@@ -238,7 +298,7 @@ class Grid(object):
         """
         assert len(word) > 0
 
-        word = word.casefold()
+        word = word.casefold()  # type: ignore
 
         try:
             nodes = self._letters[word[0]]
@@ -441,8 +501,9 @@ class Grid(object):
                         stack.append((stem, candidate, candidates))
                         break
             else:
+                next_stem = stem[1:]
                 stack.append((stem, candidate, candidates))
-                stack.append((stem[1:], next(new_candidates), new_candidates))
+                stack.append((next_stem, next(new_candidates), new_candidates))
 
         return None
 

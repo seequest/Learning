@@ -16,9 +16,8 @@ import io
 import random
 import re
 
-from collections import deque
 from string import ascii_lowercase
-from typing import Deque, Dict, Iterator, List, Mapping, Optional, MutableSet, Sequence, Tuple
+from typing import Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 
 def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tuple[Tuple[int, int], ...]]]:
@@ -52,9 +51,9 @@ def find_longest_word(grid: 'Grid', words: List[str]) -> Optional[Tuple[str, Tup
     :param words: A list of words that might be produced from letters on the 'grid' using grid moves.
     :type words: List[str]
     
-    :return: Longest word that can be produces from letters on the 'grid' using grid moves; or :const:`None`, if no word
-    can be produced from letters on the 'grid'.
-    :rtype: Optional[Tuple[str, Tuple[Tuple[int, int]]]]
+    :return: Longest word that can be produced from the letters on 'grid' using grid moves; or :const:`None`, if no word
+    can be produced from the letters on 'grid'.
+    :rtype: Optional[Tuple[str, Tuple[Tuple[int, int], ...]]]
         
     Implementation notes
     ====================

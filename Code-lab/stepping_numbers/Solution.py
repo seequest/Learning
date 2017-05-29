@@ -1,4 +1,4 @@
-"""
+""" [Stepnum](https://codelab.interviewbit.com/problems/stepnum/)
 
 Given N and M find all stepping numbers in range N to M
 
@@ -14,13 +14,15 @@ all stepping numbers are 10 , 12
 Return the numbers in sorted order.
 
 """
+import pytest
+
 from collections import deque
-from timeit import Timer, timeit
-from typing import Sequence
+from itertools import product
+from timeit import timeit
+from typing import Sequence, Tuple
 
 
 class Solution(object):
-
     @staticmethod
     def compute_stepping_numbers(n: int, m: int) -> Sequence[int]:
 
@@ -87,34 +89,26 @@ class Solution(object):
         return result
 
 
-def test_performance(method: str, m, n) -> Timer:
-    return timeit(stmt=f'Solution.{method}({m}, {n})', globals=globals(), number=100)
+@pytest.mark.parametrize(
+    'method,args', product(['compute_stepping_numbers', 'search_stepping_numbers'], [
+        ((2, 8), [
+            2, 3, 4, 5, 6, 7, 8
+        ]),
+        ((1, 1000), [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 21, 23, 32, 34, 43, 45, 54, 56, 65, 67, 76, 78, 87, 89, 98, 101, 121,
+            123, 210, 212, 232, 234, 321, 323, 343, 345, 432, 434, 454, 456, 543, 545, 565, 567, 654, 656, 676, 678,
+            765, 767, 787, 789, 876, 878, 898, 987, 989
+        ])
+    ])
+)
+def test_case(method: str, args: Tuple[Tuple[int, int], Sequence[int]]) -> None:
+    interval, expected = args
+    observed = getattr(Solution, method)(*interval)
+    print(f'\nSolution.{method}{interval} = {observed}')
+    assert observed == expected, f'expected: {expected}'
 
 
-# Case 1 : [2, 8]
-
-expected = [2, 3, 4, 5, 6, 7, 8]
-
-observed = Solution.search_stepping_numbers(2, 8)
-print(f'Solution.search_stepping_numbers(2, 8) = {observed}')
-
-assert observed == expected, f'expected: {expected}'
-
-# Case 2 : [1, 1000]
-
-expected = [
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 21, 23, 32, 34, 43, 45, 54, 56, 65, 67, 76, 78, 87, 89, 98, 101, 121, 123, 210,
-    212, 232, 234, 321, 323, 343, 345, 432, 434, 454, 456, 543, 545, 565, 567, 654, 656, 676, 678, 765, 767, 787, 789,
-    876, 878, 898, 987, 989
-]
-
-observed = Solution.search_stepping_numbers(1, 1000)
-print(f'Solution.search_stepping_numbers(1, 1000) = {observed}')
-
-assert observed == expected, f'expected: {expected}'
-
-# Performance
-
-for name in 'compute_stepping_numbers', 'search_stepping_numbers':
-    timer = test_performance(method=name, m=1, n=1000000)
-    print(f'{name}: {timer}')
+@pytest.mark.parametrize('method', ['compute_stepping_numbers', 'search_stepping_numbers'])
+def test_performance(method) -> None:
+    timer = timeit(stmt=f'Solution.{method}(1, 100000)', globals=globals(), number=100)
+    print(f'\nSolution.{method}: {timer}')

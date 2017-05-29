@@ -15,13 +15,14 @@ Return the numbers in sorted order.
 
 """
 from collections import deque
+from timeit import Timer, timeit
 from typing import Sequence
 
 
 class Solution(object):
 
     @staticmethod
-    def stepping_numbers(n: int, m: int) -> Sequence[int]:
+    def compute_stepping_numbers(n: int, m: int) -> Sequence[int]:
 
         if m < n:
             m, n = n, m
@@ -86,9 +87,20 @@ class Solution(object):
         return result
 
 
+def test_performance(method: str, m, n) -> Timer:
+    return timeit(stmt=f'Solution.{method}({m}, {n})', globals=globals(), number=100)
+
+
+# Case 1 : [2, 8]
+
 expected = [2, 3, 4, 5, 6, 7, 8]
+
 observed = Solution.search_stepping_numbers(2, 8)
-assert observed == expected
+print(f'Solution.search_stepping_numbers(2, 8) = {observed}')
+
+assert observed == expected, f'expected: {expected}'
+
+# Case 2 : [1, 1000]
 
 expected = [
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 21, 23, 32, 34, 43, 45, 54, 56, 65, 67, 76, 78, 87, 89, 98, 101, 121, 123, 210,
@@ -96,14 +108,13 @@ expected = [
     876, 878, 898, 987, 989
 ]
 
-observed = Solution.stepping_numbers(1, 1000)
-assert observed == expected
-
 observed = Solution.search_stepping_numbers(1, 1000)
-assert observed == expected
+print(f'Solution.search_stepping_numbers(1, 1000) = {observed}')
 
-print(Solution.stepping_numbers(6, 532))
-print(Solution.stepping_numbers(10, 20))
-print(Solution.stepping_numbers(22, 123))
-print(Solution.stepping_numbers(-10, 21))
-print(Solution.stepping_numbers(10, 21))
+assert observed == expected, f'expected: {expected}'
+
+# Performance
+
+for name in 'compute_stepping_numbers', 'search_stepping_numbers':
+    timer = test_performance(method=name, m=1, n=1000000)
+    print(f'{name}: {timer}')

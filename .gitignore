@@ -12,3 +12,6 @@ logs/
 RUNNING_PID
 sbt-dist/
 target/
+
+*.pstat
+*.pyc

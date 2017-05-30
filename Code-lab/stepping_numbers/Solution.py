@@ -21,6 +21,8 @@ from itertools import product
 from timeit import timeit
 from typing import Sequence, Tuple
 
+from . import profile
+
 
 class Solution(object):
     @staticmethod
@@ -50,6 +52,7 @@ class Solution(object):
         return result
 
     @staticmethod
+    @profile
     def search_stepping_numbers(n: int, m: int) -> Sequence[int]:
 
         assert 0 <= m and 0 <= n <= m
@@ -57,32 +60,28 @@ class Solution(object):
         if m < 10:
             return list(range(n, m + 1))
 
-        queue = deque()
-        result = []
+        queue = deque(range(1, 10))
+        result = list(range(n, 10))
 
-        for number in range(0, 10):
-            if n <= number <= m:
-                result.append(number)
-            if number > 0:
-                queue.append(number)
+        while True:
 
-        while len(queue) > 0:
             number = queue.popleft()
-
-            if number > m:
-                break
-
             digit = number % 10
+            number = 10 * number + digit
 
             if digit > 0:
-                step_dn = 10 * number + digit - 1
-                if n <= step_dn <= m:
+                step_dn = number - 1
+                if step_dn > m:
+                    break
+                if n <= step_dn:
                     result.append(step_dn)
                 queue.append(step_dn)
 
             if digit < 9:
-                step_up = 10 * number + digit + 1
-                if n <= step_up <= m:
+                step_up = number + 1
+                if step_up > m:
+                    break
+                if n <= step_up:
                     result.append(step_up)
                 queue.append(step_up)
 
@@ -101,14 +100,30 @@ class Solution(object):
         ])
     ])
 )
-def test_case(method: str, args: Tuple[Tuple[int, int], Sequence[int]]) -> None:
+def test_correctness(method: str, args: Tuple[Tuple[int, int], Sequence[int]]) -> None:
     interval, expected = args
     observed = getattr(Solution, method)(*interval)
     print(f'\nSolution.{method}{interval} = {observed}')
     assert observed == expected, f'expected: {expected}'
 
 
-@pytest.mark.parametrize('method', ['compute_stepping_numbers', 'search_stepping_numbers'])
+@pytest.mark.parametrize(
+    'interval', [(0, 9), (1, 1), (100, 100), (101, 101), (10, 101), (0, 1000000)]
+)
+def test_equivalence(interval: Tuple[int, int]):
+    observed = [method(*interval) for method in (Solution.compute_stepping_numbers, Solution.search_stepping_numbers)]
+    print()
+    print(f'Solution.compute_stepping_number{interval} ->')
+    print(f'  {observed[0]}')
+    print(f'Solution.search_stepping_number{interval} ->')
+    print(f'  {observed[1]}')
+    assert observed[0] == observed[1], f'Expected equivalent results'
+
+
+@pytest.mark.parametrize('method', [
+    # 'compute_stepping_numbers',
+    'search_stepping_numbers'
+])
 def test_performance(method) -> None:
-    timer = timeit(stmt=f'Solution.{method}(1, 100000)', globals=globals(), number=100)
+    timer = timeit(stmt=f'Solution.{method}(1, 10000000)', globals=globals(), number=1)
     print(f'\nSolution.{method}: {timer}')

@@ -36,48 +36,46 @@ from typing import Any, List, Sequence, Tuple
 
 class Solution(object):
 
-    def __init__(self, coins: Sequence[int]):
+    @staticmethod
+    def optimal_strategy(coins: Sequence[int]) -> int:
 
-        assert (len(coins) & 1) == 0
-        self._coins = coins
-
-    def optimal_strategy(self) -> int:
-
-        coins = self._coins
         count = len(coins)
-        table: List[List[int]] = list([None] * count for i in range(count))
+        table: List[List[int]] = list([0] * count for i in range(count))
+
+        def value_of(i: int, j: int) -> int:
+            return table[i][j] if i <= j else 0
 
         for index in range(count):
             row = 0
 
             for column in range(index, count):
 
-                x = table[row + 2][column] if (row + 2) <= column else 0
-                y = table[row + 1][column - 1] if (row + 1) <= (column - 1) else 0
-                z = table[row][column - 2] if row <= (column - 2) else 0
+                x = value_of(row + 2, column)
+                y = value_of(row + 1, column - 1)
+                z = value_of(row, column - 2)
 
                 table[row][column] = max(coins[row] + min(x, y), coins[column] + min(y, z))
                 row += 1
 
         return table[0][count - 1]
 
-    def naive_strategy(self) -> int:
-        tail = len(self._coins) - 1
+    @staticmethod
+    def naive_strategy(coins: Sequence[int]) -> int:
+        tail = len(coins) - 1
         head = 0
         purse = [0, 0]
 
         player = 0
 
         while head <= tail:
-            coin, head, tail = self._select_coin(head, tail)
+            coin, head, tail = Solution._select_coin(coins, head, tail)
             purse[player] += coin
             player ^= 1
 
         return max(*purse)
 
-    def _select_coin(self, head: int, tail: int) -> Tuple[int, int, int]:
-        coins = self._coins
-
+    @staticmethod
+    def _select_coin(coins: Sequence[int], head: int, tail: int) -> Tuple[int, int, int]:
         if coins[head] > coins[tail]:
             coin = coins[head]
             head += 1
@@ -97,6 +95,5 @@ class Solution(object):
 ]))
 def test_correctness(strategy: str, args: Any) -> None:
     expected, coins = args
-    solution = Solution(coins)
-    observed = getattr(solution, strategy)()
+    observed = getattr(Solution, strategy)(coins)
     assert observed == expected, f'{strategy}: expected {expected}, not {observed}'

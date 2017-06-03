@@ -22,13 +22,25 @@ The greatest common denominator, g, of two non-negative numbers has these proper
 
 We need not check numbers below min(m, n) / 2
 
-Algorithms
-----------
-1. starting from min(m, n),
+Research
+--------
+Euclid solved this problem in 300 B.C. This algorithm converges in many fewer steps than the prime factorizations
+algorithm. "In practice, [the prime factorizations algorithm] is only feasible for small numbers; computing prime
+factorizations in general takes far too long. One might consider working from a table of prime numbers in the range
+of a 32-bit signed integer. There are just 455,042,511 prime numbers below 10,000,000,000 > 2,147,483,647 = 2**31 - 1,
+the maximum value of a non-negative 32-bit signed integer.
 
-   step up from 1 by 2, if m and n are both odd
-   step up from 2 by 2, if m and n are both even
-   step up from 1 by 1, if m and are not both even or odd
+Factoid
+-------
+[2**31 - 1](https://en.wikipedia.org/wiki/2,147,483,647) is itself a prime number. It is one of only four known double
+Mersenne numbers, a number of the form:
+
+    2 ** (2**p - 1) - 1, where p is a prime number
+
+To see this note that:
+
+    2 ** 31 - 1 = 2 ** (2 ** 5 - 1) - 1
+    5 is a prime number
 
 """
 from typing import Tuple
@@ -42,11 +54,11 @@ class Solution(object):
 
         assert m >= 0 and n >= 0
 
-        if m == 0 or n == 0:
-            return (m if n == 0 else n), 0
-
         if m == n:
             return m, 0
+
+        if m == 0 or n == 0:
+            return max(m, n), 0
 
         if (m & 1) == 0 and (n & 1) == 0:
             m1 = m & (m ^ (m - 1))

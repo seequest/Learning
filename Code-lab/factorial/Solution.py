@@ -1,4 +1,4 @@
-""" [Factorial]()
+""" [Factorial](https://codelab.interviewbit.com/problems/factorial/)
 
 Given an integer n, return the number of trailing zeroes in n!.
 
@@ -42,7 +42,24 @@ Observations
                             --
                             24
 
-   This formula generalizes to any number base.
+   This formula generalizes to any number base. For bases that are a power of a prime we have::
+
+        z_{b}(n) = ⌊(1/m)∑⌊(n/p^k)⌋|k≥1⌋, where b = p^m, where p is prime
+
+   The summation counts the number of factors of p in n!. For base b = 16 = 2^4, n = 100 this equation reduces to this::
+
+        z_{16}(100) = ⌊1/4(⌊100/2⌋ + ⌊100/4⌋ + ⌊100/8⌋ + ⌊100/16⌋ + ⌊100/32⌋ + ⌊100/64⌋)⌋
+                    = ⌊1/4(50 + 25 + 12 + 6 + 3 + 1)⌋
+                    = ⌊97/4⌋
+                    = 24
+
+    When the base is not a power of a prime, counting the trailing zeroes is a little harder, but it can be done using
+    exactly the same ideas. For base b = 10 = 2 * 5, n = 100 we have::
+
+        z_{10}(100) = ⌊1/1(⌊100/5⌋ + ⌊100/25⌋)⌋
+                    = ⌊(20 + 4)⌋
+                    = ⌊97/4⌋
+                    = 24
 
 References
 ----------

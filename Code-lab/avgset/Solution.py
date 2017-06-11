@@ -66,6 +66,8 @@ class Solution(object):
     @staticmethod
     def compute(integers: Sequence[int]) -> Sequence[Sequence[int]]:
 
+        # Compute average as a fraction--for precision--and then normalize and sort integers
+
         average: Fraction = Fraction(sum(integers), len(integers))
         denominator: int = average.denominator
 
@@ -75,6 +77,8 @@ class Solution(object):
             integers = sorted(integers)
 
         average: int = average.numerator
+
+        # Look for the shortest sequence of integers whose total matches the average we computed
 
         for count in range(1, (len(integers) >> 1) + 1):
 

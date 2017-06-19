@@ -73,8 +73,14 @@ class Solution(object):
 
         if denominator > 1:
             integers = sorted(integer * denominator for integer in integers)
+
+            def not_divisible() -> bool:
+                return total % denominator != 0
         else:
             integers = sorted(integers)
+
+            def not_divisible() -> bool:
+                return False
 
         average: int = average.numerator
 
@@ -84,12 +90,15 @@ class Solution(object):
 
             total = count * average
 
-            if denominator > 1 and total % denominator != 0:
+            if not_divisible():
                 continue
 
             combination = next(Solution._combinations(integers, total, count), None)
 
             if combination:
+
+                # Compute the final result
+
                 iterator = iter(integers)
                 value = next(iterator)
                 subset = []
@@ -125,41 +134,34 @@ class Solution(object):
     def _combinations(values: Sequence[int], total: int, count: int) -> Iterator[Sequence[int]]:
 
         cache: Dict[Tuple[int, int, int], Optional[Sequence[int]]] = {}
-        cache_hits: int = 0
+        length = len(values)
 
         # noinspection PyShadowingNames
-        def find(start: int, subtotal: int, count: int) -> Optional[Tuple[int, ...]]:
-            match = start, subtotal, count
+        def find(match: Tuple[int, int, int]) -> Optional[Tuple[int, ...]]:
+
             try:
-                result = cache[match]
-                nonlocal cache_hits
-                cache_hits += 1
-                return result
+                return cache[match]
             except KeyError:
-                pass
+                start, subtotal, count = match
+                value = values[start]
+                result = None
+                if count == 1 and value == subtotal:
+                    result = (start,)
+                elif count > 1 and value < subtotal:
+                    subtotal -= value
+                    count -= 1
+                    for index in range(start + 1, length - count + 1):
+                        result = find((index, subtotal, count))
+                        if result:
+                            result = (start,) + result
+                            break
+                cache[match] = result
+                return result
 
-            value = values[start]
-            result = None
-
-            if count == 1 and value == subtotal:
-                result = (start,)
-            elif count > 1 and value < subtotal:
-                subtotal -= value
-                count -= 1
-                for index in range(start + 1, len(values) - count + 1):
-                    result = find(index, subtotal, count)
-                    if result is not None:
-                        result = (start,) + result
-                        break
-
-            cache[match] = result
-            return result
-
-        for start in range(len(values) - count + 1):
-            indexes = find(start, total, count)
-            if indexes is None:
-                continue
-            yield [values[i] for i in indexes]
+        for start in range(length - count + 1):
+            indexes = find((start, total, count))
+            if indexes:
+                yield [values[i] for i in indexes]
 
 
 @pytest.mark.parametrize(
@@ -168,7 +170,7 @@ class Solution(object):
         (
                 [16, 42, 18, 48, 26, 45, 46, 26, 25, 7, 7, 48, 30, 10, 10, 3, 1, 11, 33, 14, 21, 15],
                 [
-                    [1, 3, 7, 7, 10, 10, 26, 45, 46, 48, 48],
+         ython           [1, 3, 7, 7, 10, 10, 26, 45, 46, 48, 48],
                     [11, 14, 15, 16, 18, 21, 25, 26, 30, 33, 42]
                 ]
         ),
@@ -201,3 +203,43 @@ def test_correctness(integers: Sequence[int], expected: Sequence[Sequence[int]])
         assert mean(integers) == mean(expected[0])
         assert mean(integers) == mean(expected[1])
     assert observed == expected, f'Expected {expected}, not {observed}'
+
+
+@pytest.mark.parametrize(
+    'tests', [
+        [
+            ([1, 7, 15, 29, 11, 9], [[9, 15], [1, 7, 11, 29]]),
+            (
+                    [16, 42, 18, 48, 26, 45, 46, 26, 25, 7, 7, 48, 30, 10, 10, 3, 1, 11, 33, 14, 21, 15],
+                    [
+                        [1, 3, 7, 7, 10, 10, 26, 45, 46, 48, 48],
+                        [11, 14, 15, 16, 18, 21, 25, 26, 30, 33, 42]
+                    ]
+            ),
+            (
+                    [12, 23, 38, 3, 45, 14, 33, 37, 35, 50, 27, 8, 5, 47, 12, 43, 2, 49, 39, 30, 18, 46, 7, 27],
+                    [
+                        [2, 3, 5, 7, 8, 27, 38, 43, 46, 47, 49, 50],
+                        [12, 12, 14, 18, 23, 27, 30, 33, 35, 37, 39, 45]
+                    ]
+            ),
+            ([1, 7, 15, 29, 10, 8, 13, 13], [[8, 13, 15], [1, 7, 10, 13, 29]]),
+            ([47, 14, 30, 19, 30, 4, 32, 32, 15, 2, 6, 24], [[2, 4, 32, 47], [6, 14, 15, 19, 24, 30, 30, 32]]),
+            (
+                    [33, 0, 19, 49, 29, 29, 28, 41, 36, 40, 24, 34, 35, 26, 1, 0, 27, 12, 13, 50, 4, 0, 45, 39, 26],
+                    [
+                        [0, 0, 29, 49, 50],
+                        [0, 1, 4, 12, 13, 19, 24, 26, 26, 27, 28, 29, 33, 34, 35, 36, 39, 40, 41, 45]
+                    ]
+            ),
+            (
+                    [5, 16, 3, 4, 5, 2, 16, 49, 10, 35, 33, 14, 30, 40, 22, 7, 24, 38, 47, 19, 42],
+                    []
+            ),
+        ]
+    ]
+)
+def test_performance(tests: Sequence[Tuple[Sequence[int], Sequence[Sequence[int]]]]) -> None:
+    for count in range(0, 1000):
+        for integers, expected in tests:
+            Solution.compute(integers)

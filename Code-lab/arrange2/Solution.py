@@ -33,6 +33,7 @@ import pytest
 
 Assignments = Tuple[int, List[List[int]]]
 
+
 class Solution(object):
 
     @staticmethod
